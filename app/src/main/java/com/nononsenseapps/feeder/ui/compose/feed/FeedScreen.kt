@@ -53,6 +53,9 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DismissibleDrawerSheet
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,19 +64,20 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -84,7 +88,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
@@ -128,10 +131,7 @@ import com.nononsenseapps.feeder.ui.compose.feedarticle.FeedScreenViewState
 import com.nononsenseapps.feeder.ui.compose.feedarticle.FeedViewModel
 import com.nononsenseapps.feeder.ui.compose.feedarticle.onlyUnread
 import com.nononsenseapps.feeder.ui.compose.feedarticle.onlyUnreadAndSaved
-import com.nononsenseapps.feeder.ui.compose.material3.DrawerState
-import com.nononsenseapps.feeder.ui.compose.material3.DrawerValue
-import com.nononsenseapps.feeder.ui.compose.material3.rememberDrawerState
-import com.nononsenseapps.feeder.ui.compose.navdrawer.ScreenWithNavDrawer
+import com.nononsenseapps.feeder.ui.compose.navdrawer.ListOfFeedsAndTags
 import com.nononsenseapps.feeder.ui.compose.navigation.ArticleDestination
 import com.nononsenseapps.feeder.ui.compose.navigation.EditFeedDestination
 import com.nononsenseapps.feeder.ui.compose.navigation.FeedDestination
@@ -166,6 +166,7 @@ private const val LOG_TAG = "FEEDER_FEEDSCREEN"
 
 @OptIn(
     ExperimentalMaterial3Api::class,
+    ExperimentalAnimationApi::class,
 )
 @Composable
 fun FeedScreen(
@@ -232,45 +233,25 @@ fun FeedScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
 
-    val focusNavDrawer = remember { FocusRequester() }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DismissibleDrawerSheet {
+                ListOfFeedsAndTags(
+                    state = navDrawerListState,
+                    feedsAndTags = pagedNavDrawerItems,
+                    onToggleTagExpansion = viewModel::toggleTagExpansion,
+                ) { item ->
+                    coroutineScope.launch {
+                        if (viewState.currentFeedOrTag.id != item.id) {
+                            FeedDestination.navigate(navController, feedId = item.id, tag = item.tag)
+                        }
 
-    BackHandler(
-        enabled = drawerState.isOpen,
-        onBack = {
-            if (drawerState.isOpen) {
-                coroutineScope.launch {
-                    drawerState.close()
+                        drawerState.close()
+                    }
                 }
             }
         },
-    )
-
-    // See https://issuetracker.google.com/issues/177245496#comment24
-    // After recreation, items first return 0 items, then the cached items.
-    // This behavior/issue is resetting the LazyListState scroll position.
-    // Below is a workaround. More info: https://issuetracker.google.com/issues/177245496.
-    val workaroundNavDrawerListState = rememberLazyListState()
-
-    val navDrawerListStateToUse by remember {
-        derivedStateOf {
-            when (pagedNavDrawerItems.itemCount) {
-                0 -> workaroundNavDrawerListState
-                else -> navDrawerListState
-            }
-        }
-    }
-
-    ScreenWithNavDrawer(
-        feedsAndTags = pagedNavDrawerItems,
-        onToggleTagExpansion = { tag ->
-            viewModel.toggleTagExpansion(tag)
-        },
-        onDrawerItemSelect = { feedId, tag ->
-            FeedDestination.navigate(navController, feedId = feedId, tag = tag)
-        },
-        focusRequester = focusNavDrawer,
-        drawerState = drawerState,
-        navDrawerListState = navDrawerListStateToUse,
     ) {
         FeedScreen(
             viewState = viewState,

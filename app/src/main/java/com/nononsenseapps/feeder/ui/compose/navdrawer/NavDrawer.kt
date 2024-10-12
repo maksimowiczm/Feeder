@@ -23,19 +23,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.minimumInteractiveComponentSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -64,61 +59,6 @@ import com.nononsenseapps.feeder.db.room.ID_SAVED_ARTICLES
 import com.nononsenseapps.feeder.db.room.ID_UNSET
 import com.nononsenseapps.feeder.model.FeedUnreadCount
 import com.nononsenseapps.feeder.ui.compose.components.safeSemantics
-import com.nononsenseapps.feeder.ui.compose.material3.DismissibleDrawerSheet
-import com.nononsenseapps.feeder.ui.compose.material3.DismissibleNavigationDrawer
-import com.nononsenseapps.feeder.ui.compose.material3.DrawerState
-import com.nononsenseapps.feeder.ui.compose.utils.onKeyEventLikeEscape
-import kotlinx.coroutines.launch
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
-@Composable
-fun ScreenWithNavDrawer(
-    feedsAndTags: LazyPagingItems<FeedUnreadCount>,
-    onToggleTagExpansion: (String) -> Unit,
-    onDrawerItemSelect: (Long, String) -> Unit,
-    drawerState: DrawerState,
-    focusRequester: FocusRequester,
-    navDrawerListState: LazyListState,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(drawerState.isOpen) {
-        if (drawerState.isOpen) {
-            focusRequester.requestFocus()
-        }
-    }
-
-    DismissibleNavigationDrawer(
-        modifier =
-            modifier
-                .onKeyEventLikeEscape {
-                    coroutineScope.launch {
-                        drawerState.close()
-                    }
-                },
-        drawerState = drawerState,
-        drawerContent = {
-            DismissibleDrawerSheet {
-                ListOfFeedsAndTags(
-                    state = navDrawerListState,
-                    modifier =
-                        Modifier
-                            .focusRequester(focusRequester),
-                    feedsAndTags = feedsAndTags,
-                    onToggleTagExpansion = onToggleTagExpansion,
-                ) { item ->
-                    coroutineScope.launch {
-                        onDrawerItemSelect(item.id, item.tag)
-                        drawerState.close()
-                    }
-                }
-            }
-        },
-        content = content,
-    )
-}
 
 @ExperimentalAnimationApi
 @Composable
